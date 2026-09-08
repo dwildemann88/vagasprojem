@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0d0d0d" />
+  <meta name="description" content="Candidate-se a uma vaga na Projem." />
+  <title>Vagas Projem</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-dot">P</div>
+        <div>
+          <strong>PROJEM</strong>
+          <span>Trabalhe conosco</span>
+        </div>
+      </div>
+      <div class="step-count" id="stepCount">1 / 10</div>
+    </header>
+    <div class="progress"><div id="progressBar"></div></div>
+    <main class="form-wrap">
+      <form id="jobForm" novalidate enctype="multipart/form-data">
+        <input type="hidden" name="vaga" value="vendedor_externo" />
+        <input type="hidden" name="form_version" value="1.2-mobile" />
+        <input type="hidden" name="utm_source" /><input type="hidden" name="utm_medium" /><input type="hidden" name="utm_campaign" /><input type="hidden" name="utm_content" /><input type="hidden" name="utm_term" /><input type="hidden" name="fbclid" /><input type="hidden" name="gclid" /><input type="hidden" name="landing_page" /><input type="hidden" name="referrer" />
+        <section class="step active" data-step="1"><div class="step-content"><span class="eyebrow">Etapa 1</span><h1>Qual é o seu nome completo?</h1><input class="main-input" name="nome_completo" type="text" autocomplete="name" maxlength="100" placeholder="Digite seu nome" required /></div></section>
+        <section class="step" data-step="2"><div class="step-content"><span class="eyebrow">Etapa 2</span><h1>Qual é a sua idade?</h1><input class="main-input" name="idade" type="number" min="16" max="100" inputmode="numeric" placeholder="Ex.: 28" required /></div></section>
+        <section class="step" data-step="3"><div class="step-content"><span class="eyebrow">Etapa 3</span><h1>Em qual cidade você reside?</h1><input class="main-input" name="cidade" type="text" autocomplete="address-level2" placeholder="Ex.: Santa Rosa" required /></div></section>
+        <section class="step" data-step="4"><div class="step-content"><span class="eyebrow">Etapa 4</span><h1>Qual é o seu WhatsApp?</h1><input class="main-input" name="whatsapp" type="tel" autocomplete="tel" inputmode="numeric" maxlength="16" placeholder="(55) 99999-9999" required /><input class="secondary-input" name="email" type="email" autocomplete="email" maxlength="160" placeholder="E-mail (opcional)" /></div></section>
+        <section class="step" data-step="5"><div class="step-content"><span class="eyebrow">Etapa 5</span><h1>Você possui experiência com vendas?</h1><div class="options" data-required-radio="experiencia_vendas"><label><input type="radio" name="experiencia_vendas" value="sim"><span>Sim</span></label><label><input type="radio" name="experiencia_vendas" value="nao"><span>Não</span></label></div></div></section>
+        <section class="step" data-step="6"><div class="step-content"><span class="eyebrow">Etapa 6</span><h1>Você possui CNH categoria B?</h1><div class="options" data-required-radio="cnh_b"><label><input type="radio" name="cnh_b" value="sim"><span>Sim</span></label><label><input type="radio" name="cnh_b" value="nao"><span>Não</span></label></div></div></section>
+        <section class="step" data-step="7"><div class="step-content"><span class="eyebrow">Etapa 7</span><h1>Você possui veículo próprio?</h1><div class="options" data-required-radio="veiculo_proprio"><label><input type="radio" name="veiculo_proprio" value="sim"><span>Sim</span></label><label><input type="radio" name="veiculo_proprio" value="nao"><span>Não</span></label></div></div></section>
+        <section class="step" data-step="8"><div class="step-content"><span class="eyebrow">Etapa 8</span><h1>Você possui notebook?</h1><div class="options" data-required-radio="notebook"><label><input type="radio" name="notebook" value="sim"><span>Sim</span></label><label><input type="radio" name="notebook" value="nao"><span>Não</span></label></div></div></section>
+        <section class="step" data-step="9"><div class="step-content"><span class="eyebrow">Etapa 9</span><h1>Você possui CNPJ ativo?</h1><div class="options" data-required-radio="cnpj_ativo"><label><input type="radio" name="cnpj_ativo" value="sim"><span>Sim</span></label><label><input type="radio" name="cnpj_ativo" value="nao"><span>Não</span></label></div></div></section>
+        <section class="step" data-step="10"><div class="step-content"><span class="eyebrow">Etapa final</span><h1>Queremos conhecer melhor você.</h1><div class="upload-card"><input id="curriculo" name="curriculo" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" /><label for="curriculo"><strong>Clique aqui para enviar seu currículo</strong><small>PDF, DOC ou DOCX • até 5 MB</small></label><div id="fileName" class="file-name"></div></div><div class="divider"><span>ou</span></div><label class="textarea-label"><span>Conte-nos mais sobre você</span><textarea name="sobre_voce" rows="5" maxlength="1500" placeholder="Fale brevemente sobre sua experiência, seu perfil e por que se interessou pela vaga."></textarea></label><label class="consent"><input type="checkbox" name="consentimento" value="sim" required /><span>Autorizo o tratamento dos meus dados para participação no processo seletivo.</span></label></div></section>
+        <div id="formError" class="error" hidden></div>
+        <footer class="nav"><button type="button" id="backBtn" class="btn ghost">Voltar</button><button type="button" id="nextBtn" class="btn primary">Continuar</button><button type="submit" id="submitBtn" class="btn primary hidden">Finalizar candidatura</button></footer>
+      </form>
+      <section id="successState" class="success hidden"><div class="success-mark">✓</div><h1>Candidatura enviada.</h1><p>Recebemos suas informações. Caso seu perfil esteja alinhado à vaga, nossa equipe entrará em contato.</p></section>
+    </main>
+  </div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
