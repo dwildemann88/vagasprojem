@@ -1,7 +1,3 @@
-const Busboy = require("busboy");
-const crypto = require("crypto");
-
-const MAKE_WEBHOOK_URL = process.env.MAKE_WEBHOOK_URL;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_EXT = [".pdf", ".doc", ".docx"];
 const ALLOWED_MIME = [
@@ -22,66 +18,16 @@ const VALID_DDDS = new Set([
   "91","92","93","94","95","96","97","98","99"
 ]);
 
-function response(statusCode, body) {
-  return {
-    statusCode,
-    headers: { "content-type": "application/json; charset=utf-8" },
-    body: JSON.stringify(body)
-  };
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" }
+  });
 }
 
-function parseMultipart(event) {
-  return new Promise((resolve, reject) => {
-    const contentType = event.headers["content-type"] || event.headers["Content-Type"];
-    if (!contentType || !contentType.includes("multipart/form-data")) {
-      return reject(new Error("Formato de envio inválido."));
-    }
-
-    const fields = {};
-    let resume = null;
-
-    const bb = Busboy({
-      headers: { "content-type": contentType },
-      limits: { fileSize: MAX_FILE_SIZE, files: 1, fields: 50 }
-    });
-
-    bb.on("field", (name, val) => { fields[name] = String(val).trim(); });
-
-    bb.on("file", (name, stream, info) => {
-      if (name !== "curriculo") {
-        stream.resume();
-        return;
-      }
-
-      const chunks = [];
-      let exceeded = false;
-      stream.on("limit", () => { exceeded = true; });
-      stream.on("data", chunk => chunks.push(chunk));
-      stream.on("end", () => {
-        if (!info.filename) return;
-        if (exceeded) return reject(new Error("O currículo deve ter no máximo 5 MB."));
-
-        const ext = "." + info.filename.split(".").pop().toLowerCase();
-        if (!ALLOWED_EXT.includes(ext) || !ALLOWED_MIME.includes(info.mimeType)) {
-          return reject(new Error("Formato de currículo inválido."));
-        }
-
-        resume = {
-          filename: info.filename.replace(/[^\p{L}\p{N}._ -]/gu, "_"),
-          mimeType: info.mimeType,
-          buffer: Buffer.concat(chunks)
-        };
-      });
-    });
-
-    bb.on("error", reject);
-    bb.on("finish", () => resolve({ fields, resume }));
-
-    const body = event.isBase64Encoded
-      ? Buffer.from(event.body || "", "base64")
-      : Buffer.from(event.body || "", "utf8");
-    bb.end(body);
-  });
+function str(form, key) {
+  const value = form.get(key);
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function isYes(v) {
@@ -99,7 +45,7 @@ function normalizeName(raw) {
 function isValidName(raw) {
   const normalized = normalizeName(raw);
   const letters = normalized.replace(/\s/g, "");
-  return letters.length >= 3 && /^[\p{L}]+(?:\s+[\p{L}]+)*$/u.test(normalized);
+  return letters.length >= 2 && /^[\p{L}]+(?:\s+[\p{L}]+)*$/u.test(normalized);
 }
 
 function normalizeEmail(raw) {
@@ -140,11 +86,53 @@ function safeText(v, max = 1500) {
   return String(v || "").trim().slice(0, max);
 }
 
-exports.handler = async (event) => {
-  if (event.httpMethod !== "POST") return response(405, { error: "Método não permitido." });
+function getResume(form) {
+  const file = form.get("curriculo");
+  if (!file || typeof file !== "object" || typeof file.arrayBuffer !== "function") return null;
+  if (!file.name || !file.size) return null;
+  return file;
+}
+
+function validateResume(file) {
+  if (!file) return null;
+  if (file.size > MAX_FILE_SIZE) return "O currículo deve ter no máximo 5 MB.";
+  const ext = "." + String(file.name || "").split(".").pop().toLowerCase();
+  if (!ALLOWED_EXT.includes(ext)) return "Formato de currículo inválido.";
+  if (file.type && !ALLOWED_MIME.includes(file.type)) return "Formato de currículo inválido.";
+  return null;
+}
+
+export default async (req) => {
+  if (req.method !== "POST") return json({ error: "Método não permitido." }, 405);
 
   try {
-    const { fields, resume } = await parseMultipart(event);
+    const form = await req.formData();
+
+    const fields = {
+      nome_completo: str(form, "nome_completo"),
+      idade: str(form, "idade"),
+      cidade: str(form, "cidade"),
+      whatsapp: str(form, "whatsapp"),
+      email: str(form, "email"),
+      experiencia_vendas: str(form, "experiencia_vendas"),
+      cnh_b: str(form, "cnh_b"),
+      veiculo_proprio: str(form, "veiculo_proprio"),
+      notebook: str(form, "notebook"),
+      cnpj_ativo: str(form, "cnpj_ativo"),
+      consentimento: str(form, "consentimento"),
+      sobre_voce: str(form, "sobre_voce"),
+      vaga: str(form, "vaga") || "vendedor_externo",
+      form_version: str(form, "form_version") || "1.3-mobile",
+      utm_source: str(form, "utm_source"),
+      utm_medium: str(form, "utm_medium"),
+      utm_campaign: str(form, "utm_campaign"),
+      utm_content: str(form, "utm_content"),
+      utm_term: str(form, "utm_term"),
+      fbclid: str(form, "fbclid"),
+      gclid: str(form, "gclid"),
+      landing_page: str(form, "landing_page"),
+      referrer: str(form, "referrer")
+    };
 
     const required = [
       "nome_completo", "idade", "cidade", "whatsapp",
@@ -153,30 +141,35 @@ exports.handler = async (event) => {
     ];
 
     for (const key of required) {
-      if (!fields[key]) return response(400, { error: `Campo obrigatório ausente: ${key}` });
+      if (!fields[key]) return json({ error: `Campo obrigatório ausente: ${key}` }, 400);
     }
 
     const nome = normalizeName(fields.nome_completo);
-    if (!isValidName(fields.nome_completo)) {
-      return response(400, { error: "Informe um nome com pelo menos 3 letras, sem números ou caracteres especiais." });
+    if (!isValidName(nome)) {
+      return json({ error: "Informe um nome com pelo menos 2 letras, sem números ou caracteres especiais." }, 400);
     }
 
     const email = normalizeEmail(fields.email);
     if (!isValidEmail(email)) {
-      return response(400, { error: "Informe um e-mail válido ou deixe o campo em branco." });
+      return json({ error: "Informe um e-mail válido ou deixe o campo em branco." }, 400);
     }
 
     if (!isValidBrazilWhatsapp(fields.whatsapp)) {
-      return response(400, { error: "Informe um WhatsApp brasileiro válido com DDD e 9 dígitos." });
+      return json({ error: "Informe um WhatsApp brasileiro válido com DDD e 9 dígitos." }, 400);
     }
 
-    if (!resume && !safeText(fields.sobre_voce)) {
-      return response(400, { error: "Envie o currículo ou conte-nos mais sobre você." });
+    const resume = getResume(form);
+    const resumeError = validateResume(resume);
+    if (resumeError) return json({ error: resumeError }, 400);
+
+    const about = safeText(fields.sobre_voce, 1500);
+    if (!resume && !about) {
+      return json({ error: "Envie seu currículo ou conte-nos mais sobre você." }, 400);
     }
 
     const idade = Number(fields.idade);
     if (!Number.isInteger(idade) || idade < 16 || idade > 100) {
-      return response(400, { error: "Idade inválida." });
+      return json({ error: "Idade inválida." }, 400);
     }
 
     const qualified =
@@ -190,13 +183,12 @@ exports.handler = async (event) => {
     const whatsapp = normalizeWhatsapp(fields.whatsapp);
     const whatsappDisplay = formatWhatsappDisplay(fields.whatsapp);
     const city = safeText(fields.cidade, 100);
-    const about = safeText(fields.sobre_voce, 1500);
 
     const payload = {
       event: "LeadQualificado",
       event_id: eventId,
       event_time: now,
-      vaga: fields.vaga || "vendedor_externo",
+      vaga: fields.vaga,
       status: qualified ? "qualificado" : "nao_qualificado",
       nome_completo: nome,
       idade,
@@ -231,38 +223,45 @@ exports.handler = async (event) => {
       },
       tecnico: {
         enviado_em: now,
-        form_version: fields.form_version || "1.2-mobile",
+        form_version: fields.form_version,
         source: "formulario_vagas_projem"
-      },
-      telegram_message: [
-        "🟢 NOVO CANDIDATO QUALIFICADO",
-        "",
-        `👤 Nome: ${nome}`,
-        `🎂 Idade: ${idade} anos`,
-        `📍 Cidade: ${city}`,
-        `📱 WhatsApp: ${whatsappDisplay}`,
-        email ? `✉️ E-mail: ${email}` : "✉️ E-mail: não informado",
-        "",
-        `💼 Experiência com vendas: ${isYes(fields.experiencia_vendas) ? "Sim" : "Não"}`,
-        `🚘 CNH B: ${isYes(fields.cnh_b) ? "Sim" : "Não"}`,
-        `🚗 Veículo próprio: ${isYes(fields.veiculo_proprio) ? "Sim" : "Não"}`,
-        `💻 Notebook: ${isYes(fields.notebook) ? "Sim" : "Não"}`,
-        `🏢 CNPJ ativo: ${isYes(fields.cnpj_ativo) ? "Sim" : "Não"}`,
-        about ? `\n📝 Sobre o candidato:\n${about}` : "",
-        "",
-        `📊 Origem: ${fields.utm_source || "direto"}${fields.utm_medium ? ` / ${fields.utm_medium}` : ""}`,
-        fields.utm_campaign ? `Campanha: ${fields.utm_campaign}` : "",
-        "",
-        `✅ LEAD QUALIFICADO`,
-        `🔗 WhatsApp: https://wa.me/${whatsapp}`
-      ].filter(Boolean).join("\n")
+      }
     };
 
+    payload.telegram_message = [
+      "🟢 NOVO CANDIDATO QUALIFICADO",
+      "",
+      `👤 Nome: ${nome}`,
+      `🎂 Idade: ${idade} anos`,
+      `📍 Cidade: ${city}`,
+      `📱 WhatsApp: ${whatsappDisplay}`,
+      email ? `✉️ E-mail: ${email}` : "✉️ E-mail: não informado",
+      "",
+      `💼 Experiência com vendas: ${payload.experiencia_vendas}`,
+      `🚘 CNH B: ${payload.cnh_b}`,
+      `🚗 Veículo próprio: ${payload.veiculo_proprio}`,
+      `💻 Notebook: ${payload.notebook}`,
+      `🏢 CNPJ ativo: ${payload.cnpj_ativo}`,
+      about ? `\n📝 Sobre o candidato:\n${about}` : "",
+      "",
+      `📊 Origem: ${fields.utm_source || "direto"}${fields.utm_medium ? ` / ${fields.utm_medium}` : ""}`,
+      fields.utm_campaign ? `Campanha: ${fields.utm_campaign}` : "",
+      "",
+      "✅ LEAD QUALIFICADO",
+      `🔗 WhatsApp: https://wa.me/${whatsapp}`
+    ].filter(Boolean).join("\n");
+
     if (qualified) {
+      const webhook = Netlify.env.get("MAKE_WEBHOOK_URL");
+      if (!webhook) {
+        console.error("MAKE_WEBHOOK_URL ausente no ambiente do Netlify.");
+        return json({ error: "Integração com o processo seletivo não está configurada no servidor." }, 500);
+      }
+
       const outgoing = new FormData();
       outgoing.append("payload_json", JSON.stringify(payload));
 
-      for (const [key, val] of Object.entries({
+      const flatFields = {
         event: payload.event,
         event_id: payload.event_id,
         vaga: payload.vaga,
@@ -291,26 +290,31 @@ exports.handler = async (event) => {
         referrer: payload.origem.referrer,
         enviado_em: payload.tecnico.enviado_em,
         telegram_message: payload.telegram_message
-      })) outgoing.append(key, val ?? "");
+      };
+
+      for (const [key, val] of Object.entries(flatFields)) {
+        outgoing.append(key, val ?? "");
+      }
 
       if (resume) {
-        const blob = new Blob([resume.buffer], { type: resume.mimeType });
-        outgoing.append("curriculo", blob, resume.filename);
-        outgoing.append("curriculo_nome", resume.filename);
-        outgoing.append("curriculo_tipo", resume.mimeType);
+        outgoing.append("curriculo", resume, String(resume.name || "curriculo").replace(/[^\p{L}\p{N}._ -]/gu, "_"));
+        outgoing.append("curriculo_nome", String(resume.name || "curriculo"));
+        outgoing.append("curriculo_tipo", String(resume.type || ""));
       } else {
         outgoing.append("curriculo_nome", "");
         outgoing.append("curriculo_tipo", "");
       }
 
-      if (!MAKE_WEBHOOK_URL) throw new Error("MAKE_WEBHOOK_URL não configurado.");
-      const makeResponse = await fetch(MAKE_WEBHOOK_URL, { method: "POST", body: outgoing });
-      if (!makeResponse.ok) throw new Error(`Webhook Make retornou HTTP ${makeResponse.status}.`);
+      const makeResponse = await fetch(webhook, { method: "POST", body: outgoing });
+      if (!makeResponse.ok) {
+        console.error("Make webhook HTTP", makeResponse.status);
+        return json({ error: `O servidor de integração recusou o envio (${makeResponse.status}).` }, 502);
+      }
     }
 
-    return response(200, { ok: true, qualified, event_id: eventId });
+    return json({ ok: true, qualified, event_id: eventId });
   } catch (err) {
-    console.error(err);
-    return response(500, { error: "Não foi possível processar a candidatura." });
+    console.error("submit-candidate error", err);
+    return json({ error: "Não foi possível processar a candidatura." }, 500);
   }
 };
