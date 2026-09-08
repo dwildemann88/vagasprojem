@@ -32,8 +32,8 @@ Lead qualificado quando:
 
 Somente lead qualificado é enviado ao webhook do Make.
 
-## Validações V1.2
-- Nome obrigatório, mínimo de 3 letras, apenas letras e espaços.
+## Validações
+- Nome obrigatório, mínimo de 2 letras, apenas letras e espaços.
 - WhatsApp obrigatório: celular brasileiro com DDD válido + 9 dígitos; normalizado para 55DD9XXXXXXXX.
 - E-mail opcional, mas validado quando preenchido e normalizado em minúsculas.
 - Validação duplicada no frontend e backend.
@@ -43,3 +43,5 @@ Webhook configurado no backend por variável de ambiente `MAKE_WEBHOOK_URL`. Lea
 
 ## Deploy
 Produção vinculada ao projeto Netlify `vagas-projem-envio`.
+
+Variável de ambiente `MAKE_WEBHOOK_URL` confirmada manualmente no Netlify em 2026-09-08.
