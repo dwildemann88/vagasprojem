@@ -204,6 +204,18 @@ function validateStep() {
   return true;
 }
 
+form.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+  const target = e.target;
+  if (!(target instanceof HTMLInputElement)) return;
+  if (["radio", "checkbox", "file", "submit", "button"].includes(target.type)) return;
+
+  e.preventDefault();
+  if (current >= steps.length - 1) return;
+  if (!validateStep()) return;
+  changeStep(current + 1, 1);
+});
+
 nextBtn.addEventListener("click", () => {
   if (!validateStep()) return;
   changeStep(current + 1, 1);
