@@ -40,3 +40,6 @@ Somente lead qualificado é enviado ao webhook do Make.
 
 ## Make
 Webhook configurado no backend por variável de ambiente `MAKE_WEBHOOK_URL`. Leads não qualificados não são enviados. O Make recebe `payload_json`, campos achatados, `telegram_message` pronta e o arquivo de currículo quando houver.
+
+## Deploy
+Produção vinculada ao projeto Netlify `vagas-projem-envio`.
