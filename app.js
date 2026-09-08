@@ -50,7 +50,7 @@ function normalizeName(raw) {
 function isValidName(raw) {
   const normalized = normalizeName(raw);
   const letters = normalized.replace(/\s/g, "");
-  return letters.length >= 3 && /^[\p{L}]+(?:\s+[\p{L}]+)*$/u.test(normalized);
+  return letters.length >= 2 && /^[\p{L}]+(?:\s+[\p{L}]+)*$/u.test(normalized);
 }
 
 function phoneLocalDigits(raw) {
@@ -153,7 +153,7 @@ function validateStep() {
   if (step.contains(nameInput)) {
     nameInput.value = normalizeName(nameInput.value);
     if (!isValidName(nameInput.value)) {
-      showError("Informe um nome com pelo menos 3 letras, sem números ou caracteres especiais.");
+      showError("Informe um nome com pelo menos 2 letras, sem números ou caracteres especiais.");
       nameInput.focus();
       return false;
     }
